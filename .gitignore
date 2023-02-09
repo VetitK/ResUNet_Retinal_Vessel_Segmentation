@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 retina_vessel_segmentation/
 wandb/
+.DS_Store
