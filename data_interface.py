@@ -35,12 +35,13 @@ class DriveDataset(Dataset):
         return img_transformed, gt_transformed
 
 class CustomTransform:
-    def __init__(self, angle_range=(-10, 11)) -> None:
+    def __init__(self, angle_range=(-10, 11), img_size: int = 224) -> None:
         self.angle = angle_range
+        self.img_size = img_size
 
     def transform(self, img, gt):
-        img = Resize((224, 224))(ToTensor()(img))
-        gt = Resize((224, 224))(ToTensor()(gt))
+        img = Resize((self.img_size, self.img_size))(ToTensor()(img))
+        gt = Resize((self.img_size, self.img_size))(ToTensor()(gt))
         self.rotation_angle = random.randrange(*self.angle)
         img = TF.rotate(img, self.rotation_angle, expand=False)
         gt = TF.rotate(gt, self.rotation_angle, expand=False)
@@ -62,18 +63,20 @@ class DriveDataModule(LightningDataModule):
     def __init__(self,
                  data_dir: str = "data",
                  batch_size: int = 32,
-                 numworkers: int = 1) -> None:
+                 numworkers: int = 1,
+                 img_size: int = 224) -> None:
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.numworkers = numworkers
+        self.img_size = img_size
     
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
-            self.train_dataset = DriveDataset(split="train", transforms=CustomTransform(), data_dir=self.data_dir)
-            self.val_dataset = DriveDataset(split="val", transforms=CustomTransform(), data_dir=self.data_dir)
+            self.train_dataset = DriveDataset(split="train", transforms=CustomTransform(img_size=self.img_size), data_dir=self.data_dir)
+            self.val_dataset = DriveDataset(split="val", transforms=CustomTransform(img_size=self.img_size), data_dir=self.data_dir)
         if stage == "test" or stage is None:
-            self.test_dataset = DriveDataset(split="test", transforms=CustomTransform(), data_dir=self.data_dir)
+            self.test_dataset = DriveDataset(split="test", transforms=CustomTransform(img_size=self.img_size), data_dir=self.data_dir)
         
 
     def train_dataloader(self):
