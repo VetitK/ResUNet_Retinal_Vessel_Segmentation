@@ -2,7 +2,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader
 import os
 from PIL import Image
-from torchvision.transforms import Compose, ToTensor, Normalize, Resize
+from torchvision.transforms import Compose, ToTensor, Normalize, Resize, RandomCrop
 import torchvision.transforms.functional as TF
 import random
 
@@ -35,7 +35,7 @@ class DriveDataset(Dataset):
         return img_transformed, gt_transformed
 
 class CustomTransform:
-    def __init__(self, angle_range=(-10, 11), img_size: int = 224) -> None:
+    def __init__(self, angle_range=(-10, 11), img_size: int = 448) -> None:
         self.angle = angle_range
         self.img_size = img_size
 
@@ -47,13 +47,23 @@ class CustomTransform:
         gt = TF.rotate(gt, self.rotation_angle, expand=False)
         
         # h_flip
-        if random.random() > 0.7:
+        if random.random() > 0.5:
             img = TF.hflip(img)
             gt = TF.hflip(gt)
-        if random.random() > 0.7:
+        if random.random() > 0.5:
             img = TF.vflip(img)
             gt = TF.vflip(gt)
 
+        if random.random() > 0.5:
+            img = TF.adjust_brightness(img, random.random()+0.5)
+        if random.random() > 0.5:
+            img = TF.adjust_contrast(img, random.random()+0.5)
+        
+        # random crop to 112x112
+        cropper = RandomCrop((self.img_size//4, self.img_size//4))
+        left, right, h, w = cropper.get_params(img, (self.img_size//4, self.img_size//4))
+        img = TF.crop(img, left, right, h, w)
+        gt = TF.crop(gt, left, right, h, w)
         return img, gt
     
     def __call__(self, img, gt):
@@ -64,19 +74,21 @@ class DriveDataModule(LightningDataModule):
                  data_dir: str = "data",
                  batch_size: int = 32,
                  numworkers: int = 1,
-                 img_size: int = 224) -> None:
+                 img_size: int = 448,
+                 transform_angle: tuple = (-10, 11)) -> None:
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.numworkers = numworkers
         self.img_size = img_size
+        self.transform_angle = transform_angle
     
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
-            self.train_dataset = DriveDataset(split="train", transforms=CustomTransform(img_size=self.img_size), data_dir=self.data_dir)
-            self.val_dataset = DriveDataset(split="val", transforms=CustomTransform(img_size=self.img_size), data_dir=self.data_dir)
+            self.train_dataset = DriveDataset(split="train", transforms=CustomTransform(angle_range=self.transform_angle, img_size=self.img_size), data_dir=self.data_dir)
+            self.val_dataset = DriveDataset(split="val", transforms=CustomTransform(angle_range=self.transform_angle, img_size=self.img_size), data_dir=self.data_dir)
         if stage == "test" or stage is None:
-            self.test_dataset = DriveDataset(split="test", transforms=CustomTransform(img_size=self.img_size), data_dir=self.data_dir)
+            self.test_dataset = DriveDataset(split="test", transforms=CustomTransform(angle_range=self.transform_angle, img_size=self.img_size), data_dir=self.data_dir)
         
 
     def train_dataloader(self):
