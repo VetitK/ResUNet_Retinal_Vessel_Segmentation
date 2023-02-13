@@ -8,6 +8,7 @@ class DiceCoefficient(nn.Module):
         self.eps = eps
     
     def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y_hat = nn.Threshold(0.5, 0.0)(y_hat)
         y_hat = y_hat.view(-1)
         y = y.view(-1)
         intersection = (y_hat * y).sum()
@@ -20,8 +21,18 @@ class IoUScore(nn.Module):
         self.eps = eps
     
     def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y_hat = nn.Threshold(0.5, 0.0)(y_hat)
         y_hat = y_hat.view(-1)
         y = y.view(-1)
         intersection = (y_hat * y).sum()
         return (intersection + self.smooth) / (y_hat.sum() + y.sum() - intersection + self.smooth + self.eps)
 
+class Accuracy(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+    
+    def forward(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        y_hat = nn.Threshold(0.5, 0.0)(y_hat)
+        y_hat = y_hat.view(-1)
+        y = y.view(-1)
+        return (y_hat == y).sum() / y_hat.shape[0]

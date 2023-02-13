@@ -65,7 +65,7 @@ class ResUnetVariant2(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Encode
         x1 = self.input_layer(x) + self.input_skip(x)
         x2 = self.residual_conv_1(x1)
