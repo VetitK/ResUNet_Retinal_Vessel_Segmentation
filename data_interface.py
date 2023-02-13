@@ -2,7 +2,10 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, DataLoader
 import os
 from PIL import Image
-from torchvision.transforms import Compose, ToTensor, Normalize, Resize, RandomCrop
+from torchvision.transforms import Compose, ToTensor, Resize, RandomCrop, ToPILImage
+import numpy as np
+import torch
+import cv2 as cv
 import torchvision.transforms.functional as TF
 import random
 
@@ -35,13 +38,23 @@ class DriveDataset(Dataset):
         return img_transformed, gt_transformed
 
 class CustomTransform:
-    def __init__(self, angle_range=(-10, 11), img_size: int = 448) -> None:
+    def __init__(self, angle_range=(-10, 11), img_size: int = 448, crop_size: int = 224) -> None:
         self.angle = angle_range
         self.img_size = img_size
+        self.crop_size = crop_size
+
+    def CLAHE(self, img: torch.Tensor) -> torch.Tensor:
+        img = ToPILImage()(img)
+        img = cv.cvtColor(np.array(img), cv.COLOR_RGB2LAB)
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        img[:,:,0] = clahe.apply(img[:,:,0])
+        img = cv.cvtColor(img, cv.COLOR_LAB2RGB)
+        return ToTensor()(img)
 
     def transform(self, img, gt):
         img = Resize((self.img_size, self.img_size))(ToTensor()(img))
         gt = Resize((self.img_size, self.img_size))(ToTensor()(gt))
+        img = self.CLAHE(img)
         self.rotation_angle = random.randrange(*self.angle)
         img = TF.rotate(img, self.rotation_angle, expand=False)
         gt = TF.rotate(gt, self.rotation_angle, expand=False)
@@ -60,10 +73,10 @@ class CustomTransform:
         #     img = TF.adjust_contrast(img, random.random()+0.5)
         
         # random crop to 112x112
-        cropper = RandomCrop((self.img_size//2, self.img_size//2))
-        left, right, h, w = cropper.get_params(img, (self.img_size//2, self.img_size//2))
-        img = Resize((224, 224))(TF.crop(img, left, right, h, w))
-        gt = Resize((224, 224))(TF.crop(gt, left, right, h, w))
+        cropper = RandomCrop((self.crop_size, self.crop_size))
+        left, right, h, w = cropper.get_params(img, (self.crop_size, self.crop_size))
+        img = Resize((self.crop_size, self.crop_size))(TF.crop(img, left, right, h, w))
+        gt = Resize((self.crop_size, self.crop_size))(TF.crop(gt, left, right, h, w))
         return img, gt
     
     def __call__(self, img, gt):
