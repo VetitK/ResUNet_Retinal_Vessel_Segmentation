@@ -4,6 +4,7 @@ from model.model import ResUNet, ResUnetVariant2
 from losses import DiceLoss, DiceBCELoss
 from metrics import DiceCoefficient, IoUScore, Accuracy
 import torch
+from torchvision.transforms import Grayscale
 from typing import Literal
 import wandb
 class RetinaVesselSegmentation(pl.LightningModule):
@@ -51,7 +52,7 @@ class RetinaVesselSegmentation(pl.LightningModule):
         x = outputs[0]['x']
         y_hat = outputs[0]['y_hat']
         y = outputs[0]['y']
-        mask_img = wandb.Image(x[0], masks={
+        mask_img = wandb.Image(Grayscale()(x[0]), masks={
             "prediction": {
                 "mask_data": torch.nn.Threshold(0.5, 0.0)(y_hat[0]).squeeze(0).detach().cpu().numpy(),
                 "class_labels": {0: "background", 1: "vessel"}
@@ -61,7 +62,7 @@ class RetinaVesselSegmentation(pl.LightningModule):
                 "class_labels": {0: "background", 1: "vessel"}
             }
         }, caption='Input Image Masks')
-        self.logger.experiment.log({'images': mask_img})
+        self.logger.experiment.log({'images': [mask_img, wandb.Image(x[0], caption='raw'), wandb.Image(y_hat[0], caption='pred'), wandb.Image(y[0], caption='gt')]})
         
     def validation_step(self, batch, batch_id):
         x, y = batch
