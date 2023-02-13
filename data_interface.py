@@ -54,16 +54,16 @@ class CustomTransform:
             img = TF.vflip(img)
             gt = TF.vflip(gt)
 
-        if random.random() > 0.5:
-            img = TF.adjust_brightness(img, random.random()+0.5)
-        if random.random() > 0.5:
-            img = TF.adjust_contrast(img, random.random()+0.5)
+        # if random.random() > 0.5:
+        #     img = TF.adjust_brightness(img, random.random()+0.5)
+        # if random.random() > 0.5:
+        #     img = TF.adjust_contrast(img, random.random()+0.5)
         
         # random crop to 112x112
-        cropper = RandomCrop((self.img_size//4, self.img_size//4))
-        left, right, h, w = cropper.get_params(img, (self.img_size//4, self.img_size//4))
-        img = TF.crop(img, left, right, h, w)
-        gt = TF.crop(gt, left, right, h, w)
+        cropper = RandomCrop((self.img_size//2, self.img_size//2))
+        left, right, h, w = cropper.get_params(img, (self.img_size//2, self.img_size//2))
+        img = Resize((224, 224))(TF.crop(img, left, right, h, w))
+        gt = Resize((224, 224))(TF.crop(gt, left, right, h, w))
         return img, gt
     
     def __call__(self, img, gt):
