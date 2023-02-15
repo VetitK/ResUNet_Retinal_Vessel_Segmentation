@@ -55,14 +55,17 @@ class CustomTransform:
         img = cv.cvtColor(img, cv.COLOR_LAB2RGB)
         return ToTensor()(img)
 
-    def fill_black_with_avg(self, img: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        img = ToPILImage()(img)
-        mask = ToPILImage()(mask)
+    # fill black with avg of the image all RGB channels
+    def fill_black_with_avg(img: Image, mask: Image) -> Image:
         img = np.array(img)
         mask = np.array(mask)
-        avg = np.mean(img[mask == 0])
+        avg_r = np.mean(img[mask == 255, 0])
+        avg_b = np.mean(img[mask == 255, 1])
+        avg_g = np.mean(img[mask == 255, 2])
+        avg = np.array([avg_r, avg_b, avg_g])
         img[mask == 0] = avg
-        return ToTensor()(img)
+        img = Image.fromarray(img)
+        return img
         
     def transform(self, img, gt, mask):
         # Fill black with avg value
@@ -96,8 +99,8 @@ class CustomTransform:
             gt = Resize((self.crop_size, self.crop_size))(TF.crop(gt, left, right, h, w))
         return img, gt
     
-    def __call__(self, img, gt):
-        return self.transform(img, gt)
+    def __call__(self, img, gt, mask):
+        return self.transform(img, gt, mask)
 
 class DriveDataModule(LightningDataModule):
     def __init__(self,
