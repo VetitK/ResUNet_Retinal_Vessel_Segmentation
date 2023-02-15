@@ -62,7 +62,9 @@ class RetinaVesselSegmentation(pl.LightningModule):
                 "class_labels": {0: "background", 1: "vessel"}
             }
         }, caption='Input Image Masks')
-        self.logger.experiment.log({'images': [mask_img, wandb.Image(x[0], caption='raw'), wandb.Image(y_hat[0], caption='pred'), wandb.Image(y[0], caption='gt')]})
+        self.logger.experiment.log({'images': [mask_img, wandb.Image(x[0], caption='raw'),
+                                               wandb.Image(torch.nn.Threshold(0.5, 0.0)(y_hat[0]).squeeze(0), caption='pred'),
+                                               wandb.Image(y[0], caption='gt')]})
         
     def validation_step(self, batch, batch_id):
         x, y = batch
