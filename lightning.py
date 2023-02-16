@@ -76,7 +76,7 @@ class RetinaVesselSegmentation(pl.LightningModule):
         self.log('val_loss', loss)
         self.log('val_dice_coeff', dice_coeff)
         self.log('val_iou_score', iou_score)
-        self.log('train_acc', acc)
+        self.log('val_acc', acc)
         return loss
     
     def test_step(self, batch, batch_id):
@@ -89,5 +89,5 @@ class RetinaVesselSegmentation(pl.LightningModule):
         self.log('test_loss', loss)
         self.log('test_dice_coeff', dice_coeff)
         self.log('test_iou_score', iou_score)
-        self.log('train_acc', acc)
+        self.log('test_acc', acc)
         return loss
