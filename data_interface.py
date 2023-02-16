@@ -50,32 +50,33 @@ class CustomTransform:
     def CLAHE(self, img: torch.Tensor) -> torch.Tensor:
         img = ToPILImage()(img)
         img = cv.cvtColor(np.array(img), cv.COLOR_RGB2LAB)
-        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        clahe = cv.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
         img[:,:,0] = clahe.apply(img[:,:,0])
         img = cv.cvtColor(img, cv.COLOR_LAB2RGB)
         return ToTensor()(img)
 
     # fill black with avg of the image all RGB channels
-    def fill_black_with_avg(img: Image, mask: Image) -> Image:
-        img = np.array(img)
-        mask = np.array(mask)
-        avg_r = np.mean(img[mask == 255, 0])
-        avg_b = np.mean(img[mask == 255, 1])
-        avg_g = np.mean(img[mask == 255, 2])
-        avg = np.array([avg_r, avg_b, avg_g])
-        img[mask == 0] = avg
-        img = Image.fromarray(img)
+    def fill_black_with_avg(self, img: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        avg_r = torch.mean(img[0, :, :][mask.squeeze(0) == 1])
+        avg_b = torch.mean(img[1, :, :][mask.squeeze(0) == 1])
+        avg_g = torch.mean(img[2, :, :][mask.squeeze(0) == 1])
+        avg = torch.tensor([avg_r, avg_b, avg_g])
+        # fill all black pixels with avg
+        img[:, mask.squeeze(0) == 0] = avg.unsqueeze(1)
+
         return img
         
     def transform(self, img, gt, mask):
-        # Fill black with avg value
-        img = self.fill_black_with_avg(img, mask)
         img = Resize((self.img_size, self.img_size))(ToTensor()(img))
         gt = Resize((self.img_size, self.img_size))(ToTensor()(gt))
+        mask = Resize((self.img_size, self.img_size))(ToTensor()(mask))
         img = self.CLAHE(img)
         self.rotation_angle = random.randrange(*self.angle)
         img = TF.rotate(img, self.rotation_angle, expand=False)
         gt = TF.rotate(gt, self.rotation_angle, expand=False)
+        mask = TF.rotate(mask, self.rotation_angle, expand=False)
+        # Fill black with avg value
+        # img = self.fill_black_with_avg(img, mask)
         
         # h_flip
         if random.random() > 0.5:
